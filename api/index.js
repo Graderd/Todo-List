@@ -2,6 +2,8 @@ require("dotenv").config();
 
 const express = require("express");
 const app = express();
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./swagger");
 
 app.use(express.json());
 
@@ -19,6 +21,13 @@ app.get("/", (req, res) => {
 });
 
 app.use(errorHandler);
+
+// ruta swagger
+app.use(
+  "/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec)
+);
 
 app.listen(3000, () => {
   console.log("Servidor corriendo en puerto 3000");
