@@ -78,7 +78,7 @@ const login = (req, res) => {
       //generar token
       const token = jwt.sign(
         { id: user.id, email: user.email },
-	"secreto_super_seguro",
+	process.env.JWT_SECRET,
 	{ expiresIn: "1h" }
       );
 
