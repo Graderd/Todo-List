@@ -15,19 +15,19 @@ const errorHandler = require("./middleware/error.middleware");
 app.use("/api", tareasRoutes);
 app.use("/auth", authRoutes);
 
-// ruta base
-app.get("/", (req, res) => {
-  res.send("API de TODO funcionando");
-});
-
-app.use(errorHandler);
-
 // ruta swagger
 app.use(
   "/docs",
   swaggerUi.serve,
   swaggerUi.setup(swaggerSpec)
 );
+
+// ruta base
+app.get("/", (req, res) => {
+  res.send("API de TODO funcionando");
+});
+
+app.use(errorHandler);
 
 app.listen(3000, () => {
   console.log("Servidor corriendo en puerto 3000");
