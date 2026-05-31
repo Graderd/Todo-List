@@ -10,6 +10,21 @@ const { deleteTarea } = require("../controllers/tareas.controller");
 const { getTareaById } = require("../controllers/tareas.controller");
 const { toggleTarea } = require("../controllers/tareas.controller");
 
+/**
+ * @swagger
+ * /api/tareas:
+ *   get:
+ *     summary: Obtener tareas del usuario
+ *     tags:
+ *       - Tareas
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de tareas
+ *       401:
+ *         description: Token faltante o inválido
+ */
 router.get("/tareas", verifyToken, getTareas);
 router.post("/tareas", verifyToken, createTarea);
 router.put("/tareas/:id", verifyToken, updateTarea);

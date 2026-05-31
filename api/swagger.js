@@ -12,7 +12,16 @@ const options = {
             {
                 url: "http://10.0.0.84:3000"
             }
-        ]
+        ],
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: "http",
+                    scheme: "bearer",
+                    bearerFormat: "JWT"
+                }
+            }
+        }
     },
     apis: ["./routes/*.js"]
 };
