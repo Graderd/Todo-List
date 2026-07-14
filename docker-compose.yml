@@ -1,32 +1,44 @@
-version: '3'
-
 services:
   db:
     image: mysql:8
     container_name: todo-db
     restart: unless-stopped
+
     environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: todoappdb
-      MYSQL_USER: user
-      MYSQL_PASSWORD: user123
-    ports:
-      - "3306:3306"
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
     volumes:
       - db_data:/var/lib/mysql
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
+
     container_name: todo-api
     restart: unless-stopped
+
     ports:
       - "3000:3000"
+
     env_file:
       - ./api/.env
+
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   db_data:
