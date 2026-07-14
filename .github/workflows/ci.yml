@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validar API y Docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v6
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+
+      - name: Instalar dependencias
+        working-directory: api
+        run: npm ci
+
+      - name: Validar sintaxis JavaScript
+        working-directory: api
+        run: |
+          while IFS= read -r -d '' file; do
+            echo "Revisando: $file"
+            node --check "$file"
+          done < <(
+            find . \
+              -type f \
+              -name "*.js" \
+              -not -path "./node_modules/*" \
+              -print0
+          )
+
+      - name: Revisar vulnerabilidades altas o críticas
+        working-directory: api
+        run: npm audit --audit-level=high
+
+      - name: Preparar variables ficticias
+        run: |
+          cp .env.example .env
+          cp api/.env.example api/.env
+
+      - name: Validar Docker Compose
+        run: docker compose config --quiet
+
+      - name: Construir imagen Docker
+        run: docker build -t todo-list-api:${{ github.sha }} ./api
