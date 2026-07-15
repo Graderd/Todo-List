@@ -10,7 +10,7 @@ const options = {
         },
         servers: [
             {
-                url: "http://10.0.0.84:3000"
+                url: "/"
             }
         ],
         components: {

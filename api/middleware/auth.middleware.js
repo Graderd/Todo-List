@@ -1,28 +1,55 @@
 const jwt = require("jsonwebtoken");
 
 const verifyToken = (req, res, next) => {
-  const authHeader = req.headers["authorization"];
+  const authHeader = req.get("authorization");
 
-  // no hay token
   if (!authHeader) {
     return res.status(401).json({
+      success: false,
       error: "Token requerido"
     });
   }
 
-  // formato: Bearer TOKEN
-  const token = authHeader.split(" ")[1];
+  if (!authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({
+      success: false,
+      error: "Formato de autorización inválido"
+    });
+  }
+
+  const token = authHeader.slice(7).trim();
+
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      error: "Token requerido"
+    });
+  }
+
+  if (!process.env.JWT_SECRET) {
+    console.error("JWT_SECRET no está configurado");
+
+    return res.status(500).json({
+      success: false,
+      error: "Error interno del servidor"
+    });
+  }
 
   try {
-   const decoded = jwt.verify(token, "secreto_super_seguro");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    return next();
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        error: "Token expirado"
+      });
+    }
 
-  //guardamos ingo en usuario
-  req.user = decoded;
-
-  next();
-  } catch(error) {
-    return res.status(403).json({
-      error: "Token invalido"
+    return res.status(401).json({
+      success: false,
+      error: "Token inválido"
     });
   }
 };
