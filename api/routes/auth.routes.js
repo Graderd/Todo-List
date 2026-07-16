@@ -25,12 +25,14 @@ const { register, login } = require("../controllers/auth/auth.controller");
  *                 example: nuevo@test.com
  *               password:
  *                 type: string
- *                 example: "123456"
+ *                 example: "ClaveSegura123!"
  *     responses:
  *       201:
  *         description: Usuario creado
  *       400:
  *         description: Datos inválidos
+ *       409:
+ *         description: El correo ya está registrado
  *       500:
  *         description: Error del servidor
  */
@@ -58,7 +60,7 @@ router.post("/register", register);
  *                 example: starling@test.com
  *               password:
  *                 type: string
- *                 example: "123456"
+ *                 example: "ClaveSegura123!"
  *     responses:
  *       200:
  *         description: Login exitoso

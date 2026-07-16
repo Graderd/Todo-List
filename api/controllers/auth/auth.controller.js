@@ -2,92 +2,135 @@ const db = require("../../models/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-const register = async (req, res) => {
-  const { email, password } = req.body;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  //validacion basica
+const normalizeEmail = (value) => {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim().toLowerCase();
+};
+
+const register = async (req, res, next) => {
+  const email = normalizeEmail(req.body?.email);
+  const password =
+    typeof req.body?.password === "string" ? req.body.password : "";
+
   if (!email || !password) {
     return res.status(400).json({
+      success: false,
+      error: "Email y contraseña son obligatorios"
+    });
+  }
+
+  if (!EMAIL_REGEX.test(email) || email.length > 255) {
+    return res.status(400).json({
+      success: false,
+      error: "El correo electrónico no es válido"
+    });
+  }
+
+  if (password.length < 8 || password.length > 72) {
+    return res.status(400).json({
+      success: false,
+      error: "La contraseña debe tener entre 8 y 72 caracteres"
     });
   }
 
   try {
-    // encriptar contrasena
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    db.query(
+    const [result] = await db.promise().query(
       "INSERT INTO usuarios (email, password) VALUES (?, ?)",
-      [email, hashedPassword],
-      (err, result) => {
-        if (err) {
-          console.error(err);
-          return res.status(500).json({
-	    error: "Error registrando usuario"
-          });
-        }
-
-	res.status(201).json({
-	  message: "Usuario creado"
-	});
-      }
+      [email, hashedPassword]
     );
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      error: "Error en el servidor"
+
+    return res.status(201).json({
+      success: true,
+      message: "Usuario creado",
+      data: {
+        id: result.insertId,
+        email
+      }
     });
-   }
+  } catch (error) {
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({
+        success: false,
+        error: "El correo ya está registrado"
+      });
+    }
+
+    return next(error);
+  }
 };
 
-const login = (req, res) => {
-  const { email, password } = req.body;
+const login = async (req, res, next) => {
+  const email = normalizeEmail(req.body?.email);
+  const password =
+    typeof req.body?.password === "string" ? req.body.password : "";
 
   if (!email || !password) {
     return res.status(400).json({
-      error: "Email y password son obligarios"
+      success: false,
+      error: "Email y contraseña son obligatorios"
     });
   }
 
-  db.query(
-    "SELECT * FROM usuarios WHERE email = ?",
-    [email],
-    async (err, results) => {
+  try {
+    const [results] = await db.promise().query(
+      `
+        SELECT id, email, password
+        FROM usuarios
+        WHERE email = ?
+        LIMIT 1
+      `,
+      [email]
+    );
 
-      if (err) {
-        console.error(err);
-	return res.status(500).json({
-	  error: "Error en el servidor"
-        });
-      }
-
-      if(results.length === 0) {
-	return res.status(401).json({
-	  error: "Credenciales invalidas"
-	});
-      }
-
-      const user = results[0];
-      const match = await bcrypt.compare(password, user.password);
-
-      if(!match) {
-	return res.status(401).json({
-	  error: "Credenciales invalidas"
-	});
-      }
-
-      //generar token
-      const token = jwt.sign(
-        { id: user.id, email: user.email },
-	process.env.JWT_SECRET,
-	{ expiresIn: "1h" }
-      );
-
-      res.json({
-	message: "Login exitoso",
-	token
+    if (results.length === 0) {
+      return res.status(401).json({
+        success: false,
+        error: "Credenciales inválidas"
       });
     }
-  );
+
+    const user = results[0];
+    const passwordMatches = await bcrypt.compare(password, user.password);
+
+    if (!passwordMatches) {
+      return res.status(401).json({
+        success: false,
+        error: "Credenciales inválidas"
+      });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      const error = new Error("JWT_SECRET no está configurado");
+      error.status = 500;
+      throw error;
+    }
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1h"
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Login exitoso",
+      token
+    });
+  } catch (error) {
+    return next(error);
+  }
 };
 
 module.exports = {

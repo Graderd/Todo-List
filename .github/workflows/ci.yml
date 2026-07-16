@@ -48,6 +48,13 @@ jobs:
               -print0
           )
 
+      - name: Ejecutar pruebas automáticas
+        working-directory: api
+        env:
+          NODE_ENV: test
+          JWT_SECRET: secreto-jwt-exclusivo-para-ci
+        run: npm test
+
       - name: Revisar vulnerabilidades altas o críticas
         working-directory: api
         run: npm audit --audit-level=high
