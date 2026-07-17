@@ -25,6 +25,14 @@ app.get("/", (req, res) => {
   res.send("API de TODO funcionando");
 });
 
+// Ruta utilizada para comprobar la salud de la API
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "todo-api"
+  });
+});
+
 app.use(errorHandler);
 
 module.exports = app;

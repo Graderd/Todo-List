@@ -28,3 +28,14 @@ test("GET /api/tareas con token falso responde 401", async () => {
   assert.equal(response.body.success, false);
   assert.equal(typeof response.body.error, "string");
 });
+
+test("GET /health responde que la API está saludable", async () => {
+  const response = await request(app).get("/health");
+
+  assert.equal(response.status, 200);
+
+  assert.deepEqual(response.body, {
+    status: "ok",
+    service: "todo-api"
+  });
+});
