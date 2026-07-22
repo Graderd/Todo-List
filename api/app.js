@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swagger");
+const db = require("./models/db");
 
 app.use(express.json());
 
@@ -31,6 +32,27 @@ app.get("/health", (req, res) => {
     status: "ok",
     service: "todo-api"
   });
+});
+
+// Comprueba que la API puede comunicarse con MySQL
+app.get("/ready", async (req, res) => {
+  try {
+    await db.promise().query("SELECT 1");
+
+    return res.status(200).json({
+      status: "ready",
+      service: "todo-api",
+      database: "connected"
+    });
+  } catch (error) {
+    console.error("Readiness check failed:", error.message);
+
+    return res.status(503).json({
+      status: "not_ready",
+      service: "todo-api",
+      database: "disconnected"
+    });
+  }
 });
 
 app.use(errorHandler);
