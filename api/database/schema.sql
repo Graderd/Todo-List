@@ -1,0 +1,29 @@
+CREATE TABLE usuarios (
+  id INT NOT NULL AUTO_INCREMENT,
+  email VARCHAR(255) NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  fecha_creacion TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY email (email)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_0900_ai_ci;
+
+
+CREATE TABLE tareas (
+  id INT NOT NULL AUTO_INCREMENT,
+  titulo VARCHAR(255) NOT NULL,
+  completada TINYINT(1) DEFAULT 0,
+  user_id INT NOT NULL,
+  fecha_creacion TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  KEY user_id (user_id),
+
+  CONSTRAINT tareas_ibfk_1
+    FOREIGN KEY (user_id)
+    REFERENCES usuarios (id)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_0900_ai_ci;
