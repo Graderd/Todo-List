@@ -19,9 +19,19 @@ const { toggleTarea } = require("../controllers/tareas.controller");
  *       - Tareas
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: completada
+ *         required: false
+ *         schema:
+ *           type: boolean
+ *         description: Filtra las tareas por estado completado o pendiente
+ *         example: true
  *     responses:
  *       200:
  *         description: Lista de tareas
+ *       400:
+ *         description: El filtro completada debe ser true o false
  *       401:
  *         description: Token faltante o inválido
  */
