@@ -39,3 +39,12 @@ test("GET /health responde que la API está saludable", async () => {
     service: "todo-api"
   });
 });
+
+test("GET a una ruta inexistente responde 404 en JSON", async () => {
+  const response = await request(app).get("/esta-ruta-no-existe");
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.error, "Ruta no encontrada");
+  assert.match(response.headers["content-type"], /json/);
+});

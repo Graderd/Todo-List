@@ -10,6 +10,7 @@ app.use(express.json());
 const tareasRoutes = require("./routes/tareas.routes");
 const authRoutes = require("./routes/auth.routes");
 const errorHandler = require("./middleware/error.middleware");
+const notFoundHandler = require("./middleware/notFound.middleware");
 
 app.use("/api", tareasRoutes);
 app.use("/auth", authRoutes);
@@ -55,6 +56,8 @@ app.get("/ready", async (req, res) => {
   }
 });
 
+
+app.use(notFoundHandler);
 app.use(errorHandler);
 
 module.exports = app;
