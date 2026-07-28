@@ -16,9 +16,16 @@ const getTareas = (req, res, next) => {
   const { completada } = req.query;
 
   let query = "SELECT * FROM tareas WHERE user_id = ?";
-  let params = [userId];
+  const params = [userId];
 
   if (completada !== undefined) {
+    if (completada !== "true" && completada !== "false") {
+      return res.status(400).json({
+        success: false,
+        error: "El filtro completada debe ser true o false"
+      });
+    }
+
     query += " AND completada = ?";
     params.push(completada === "true" ? 1 : 0);
   }
@@ -28,7 +35,7 @@ const getTareas = (req, res, next) => {
       return next(err);
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: results
     });

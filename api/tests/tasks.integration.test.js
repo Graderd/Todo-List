@@ -45,6 +45,19 @@ test("CRUD de tareas mantiene el aislamiento entre usuarios", async (t) => {
 
   let tareaId;
 
+    await t.test("Filtro completada inválido responde 400", async () => {
+    const response = await request(app)
+      .get("/api/tareas?completada=hola")
+      .set("Authorization", `Bearer ${userA.token}`);
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.success, false);
+    assert.equal(
+      response.body.error,
+      "El filtro completada debe ser true o false"
+    );
+  });
+
     await t.test("Crear tarea con título corto responde 400", async () => {
     const response = await request(app)
       .post("/api/tareas")
@@ -100,6 +113,22 @@ test("CRUD de tareas mantiene el aislamiento entre usuarios", async (t) => {
 
     tareaId = response.body.data.id;
     assert.equal(typeof tareaId, "number");
+  });
+
+    await t.test("Usuario A puede filtrar sus tareas pendientes", async () => {
+    const response = await request(app)
+      .get("/api/tareas?completada=false")
+      .set("Authorization", `Bearer ${userA.token}`);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.success, true);
+
+    const tareaEncontrada = response.body.data.find(
+      (tarea) => tarea.id === tareaId
+    );
+
+    assert.ok(tareaEncontrada);
+    assert.equal(Number(tareaEncontrada.completada), 0);
   });
 
   await t.test("Usuario A puede ver su tarea en el listado", async () => {
@@ -292,6 +321,22 @@ test("CRUD de tareas mantiene el aislamiento entre usuarios", async (t) => {
 
     assert.equal(getResponse.status, 200);
     assert.equal(Number(getResponse.body.data.completada), 1);
+  });
+
+    await t.test("Usuario A puede filtrar sus tareas completadas", async () => {
+    const response = await request(app)
+      .get("/api/tareas?completada=true")
+      .set("Authorization", `Bearer ${userA.token}`);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.success, true);
+
+    const tareaEncontrada = response.body.data.find(
+      (tarea) => tarea.id === tareaId
+    );
+
+    assert.ok(tareaEncontrada);
+    assert.equal(Number(tareaEncontrada.completada), 1);
   });
 
   await t.test("Usuario A puede alternar el estado de su tarea", async () => {
