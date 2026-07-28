@@ -44,14 +44,16 @@ router.get("/tareas", verifyToken, getTareas);
  *             required:
  *               - titulo
  *             properties:
- *               titulo:
+ *                titulo:
  *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 255
  *                 example: Aprender Swagger
  *     responses:
  *       201:
  *         description: Tarea creada correctamente
  *       400:
- *         description: El título es inválido
+ *         description: El título debe ser texto y tener entre 3 y 255 caracteres
  *       401:
  *         description: No autorizado
  */
@@ -71,6 +73,7 @@ router.post("/tareas", verifyToken, createTarea);
  *         required: true
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         description: ID de la tarea a actualizar
  *     requestBody:
  *       required: true
@@ -78,17 +81,35 @@ router.post("/tareas", verifyToken, createTarea);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - completada
+ *             minProperties: 1
  *             properties:
+ *               titulo:
+ *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 255
+ *                 example: Estudiar Docker Compose
  *               completada:
  *                 type: boolean
  *                 example: true
- *     responses:
+ *           examples:
+ *             soloTitulo:
+ *               summary: Actualizar solamente el título
+ *               value:
+ *                 titulo: Estudiar Docker Compose
+ *             soloEstado:
+ *               summary: Actualizar solamente el estado
+ *               value:
+ *                 completada: true
+ *             tituloYEstado:
+ *               summary: Actualizar ambos campos
+ *               value:
+ *                 titulo: Estudiar Docker Compose
+ *                 completada: true
+  *     responses:
  *       200:
  *         description: Tarea actualizada correctamente
  *       400:
- *         description: El campo completada debe ser true o false
+ *         description: ID inválido, cuerpo vacío o datos inválidos
  *       401:
  *         description: No autorizado
  *       404:
@@ -110,6 +131,7 @@ router.put("/tareas/:id", verifyToken, updateTarea);
  *         required: true
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         description: ID de la tarea a eliminar
  *     responses:
  *       200:
@@ -135,6 +157,7 @@ router.delete("/tareas/:id", verifyToken, deleteTarea);
  *         required: true
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         description: ID de la tarea
  *     responses:
  *       200:
@@ -160,6 +183,7 @@ router.get("/tareas/:id", verifyToken, getTareaById);
  *         required: true
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         description: ID de la tarea
  *     responses:
  *       200:

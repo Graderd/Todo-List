@@ -45,6 +45,43 @@ test("CRUD de tareas mantiene el aislamiento entre usuarios", async (t) => {
 
   let tareaId;
 
+    await t.test("Crear tarea con título corto responde 400", async () => {
+    const response = await request(app)
+      .post("/api/tareas")
+      .set("Authorization", `Bearer ${userA.token}`)
+      .send({
+        titulo: "ab"
+      });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.success, false);
+  });
+
+  await t.test("Crear tarea con título demasiado largo responde 400", async () => {
+    const response = await request(app)
+      .post("/api/tareas")
+      .set("Authorization", `Bearer ${userA.token}`)
+      .send({
+        titulo: "a".repeat(256)
+      });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.success, false);
+  });
+
+  await t.test("Crear tarea con título no textual responde 400", async () => {
+    const response = await request(app)
+      .post("/api/tareas")
+      .set("Authorization", `Bearer ${userA.token}`)
+      .send({
+        titulo: 123
+      });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.success, false);
+    assert.equal(response.body.error, "El titulo debe ser texto");
+  });
+
   await t.test("Usuario A puede crear una tarea", async () => {
     const response = await request(app)
       .post("/api/tareas")
@@ -90,6 +127,152 @@ test("CRUD de tareas mantiene el aislamiento entre usuarios", async (t) => {
     assert.equal(response.body.success, true);
     assert.equal(response.body.data.id, tareaId);
     assert.equal(response.body.data.user_id, userA.id);
+  });
+
+    await t.test("Usuario A puede actualizar solamente el título", async () => {
+    const updateResponse = await request(app)
+      .put(`/api/tareas/${tareaId}`)
+      .set("Authorization", `Bearer ${userA.token}`)
+      .send({
+        titulo: "Título actualizado por el usuario A"
+      });
+
+    assert.equal(updateResponse.status, 200);
+    assert.equal(updateResponse.body.success, true);
+
+    const getResponse = await request(app)
+      .get(`/api/tareas/${tareaId}`)
+      .set("Authorization", `Bearer ${userA.token}`);
+
+    assert.equal(getResponse.status, 200);
+    assert.equal(
+      getResponse.body.data.titulo,
+      "Título actualizado por el usuario A"
+    );
+  });
+
+    await t.test("Usuario A puede actualizar título y estado juntos", async () => {
+    const updateResponse = await request(app)
+      .put(`/api/tareas/${tareaId}`)
+      .set("Authorization", `Bearer ${userA.token}`)
+      .send({
+        titulo: "Tarea actualizada completamente",
+        completada: false
+      });
+
+    assert.equal(updateResponse.status, 200);
+    assert.equal(updateResponse.body.success, true);
+
+    const getResponse = await request(app)
+      .get(`/api/tareas/${tareaId}`)
+      .set("Authorization", `Bearer ${userA.token}`);
+
+    assert.equal(getResponse.status, 200);
+    assert.equal(
+      getResponse.body.data.titulo,
+      "Tarea actualizada completamente"
+    );
+    assert.equal(Number(getResponse.body.data.completada), 0);
+  });
+
+    await t.test("Actualizar sin campos responde 400", async () => {
+    const response = await request(app)
+      .put(`/api/tareas/${tareaId}`)
+      .set("Authorization", `Bearer ${userA.token}`)
+      .send({});
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.success, false);
+    assert.equal(
+      response.body.error,
+      "Debes enviar titulo o completada"
+    );
+  });
+
+    await t.test("Actualizar con título corto responde 400", async () => {
+    const response = await request(app)
+      .put(`/api/tareas/${tareaId}`)
+      .set("Authorization", `Bearer ${userA.token}`)
+      .send({
+        titulo: "ab"
+      });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.success, false);
+  });
+
+    await t.test("Actualizar con título demasiado largo responde 400", async () => {
+    const response = await request(app)
+      .put(`/api/tareas/${tareaId}`)
+      .set("Authorization", `Bearer ${userA.token}`)
+      .send({
+        titulo: "a".repeat(256)
+      });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.success, false);
+  });
+
+    await t.test("Actualizar con título no textual responde 400", async () => {
+    const response = await request(app)
+      .put(`/api/tareas/${tareaId}`)
+      .set("Authorization", `Bearer ${userA.token}`)
+      .send({
+        titulo: 123
+      });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.success, false);
+    assert.equal(response.body.error, "El titulo debe ser texto");
+  });
+
+    await t.test("Actualizar con completada no booleana responde 400", async () => {
+    const response = await request(app)
+      .put(`/api/tareas/${tareaId}`)
+      .set("Authorization", `Bearer ${userA.token}`)
+      .send({
+        completada: "true"
+      });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.success, false);
+    assert.equal(
+      response.body.error,
+      "Completada debe ser true o false"
+    );
+  });
+
+    await t.test("Las operaciones rechazan IDs inválidos", async () => {
+    const getResponse = await request(app)
+      .get("/api/tareas/abc")
+      .set("Authorization", `Bearer ${userA.token}`);
+
+    assert.equal(getResponse.status, 400);
+    assert.equal(
+      getResponse.body.error,
+      "El ID de la tarea no es válido"
+    );
+
+    const updateResponse = await request(app)
+      .put("/api/tareas/0")
+      .set("Authorization", `Bearer ${userA.token}`)
+      .send({
+        completada: true
+      });
+
+    assert.equal(updateResponse.status, 400);
+
+    const toggleResponse = await request(app)
+      .patch("/api/tareas/2.5/toggle")
+      .set("Authorization", `Bearer ${userA.token}`);
+
+    assert.equal(toggleResponse.status, 400);
+
+    const deleteResponse = await request(app)
+      .delete("/api/tareas/-1")
+      .set("Authorization", `Bearer ${userA.token}`);
+
+    assert.equal(deleteResponse.status, 400);
   });
 
   await t.test("Usuario A puede marcar su tarea como completada", async () => {
