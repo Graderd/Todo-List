@@ -8,6 +8,7 @@ LABEL org.opencontainers.image.version="${APP_VERSION}"
 LABEL org.opencontainers.image.source="https://github.com/Graderd/Todo-List"
 
 ENV NODE_ENV=production
+ENV APP_VERSION=${APP_VERSION}
 
 WORKDIR /app
 

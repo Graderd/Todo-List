@@ -3,6 +3,9 @@ const app = express();
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swagger");
 const db = require("./models/db");
+const packageJson = require("./package.json");
+const appVersion =
+  process.env.APP_VERSION || packageJson.version;
 
 app.use(express.json());
 
@@ -31,7 +34,8 @@ app.get("/", (req, res) => {
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "ok",
-    service: "todo-api"
+    service: "todo-api",
+    version: appVersion
   });
 });
 
