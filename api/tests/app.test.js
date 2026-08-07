@@ -36,7 +36,8 @@ test("GET /health responde que la API está saludable", async () => {
 
   assert.deepEqual(response.body, {
     status: "ok",
-    service: "todo-api"
+    service: "todo-api",
+    version: "1.0.1"
   });
 });
 
