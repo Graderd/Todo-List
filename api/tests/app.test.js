@@ -37,7 +37,7 @@ test("GET /health responde que la API está saludable", async () => {
   assert.deepEqual(response.body, {
     status: "ok",
     service: "todo-api",
-    version: "1.0.1"
+    version: "1.1.0"
   });
 });
 
@@ -48,4 +48,15 @@ test("GET a una ruta inexistente responde 404 en JSON", async () => {
   assert.equal(response.body.success, false);
   assert.equal(response.body.error, "Ruta no encontrada");
   assert.match(response.headers["content-type"], /json/);
+});
+
+test("GET /metrics responde con métricas de Prometheus", async () => {
+  const response = await request(app).get("/metrics");
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers["content-type"], /text\/plain/);
+  assert.match(response.text, /# HELP todo_api_http_requests_total Total number of HTTP requests/);
+  assert.match(response.text, /# TYPE todo_api_http_requests_total counter/);
+  assert.match(response.text, /# HELP todo_api_http_request_duration_seconds HTTP request duration in seconds/);
+  assert.match(response.text, /# TYPE todo_api_http_request_duration_seconds histogram/);
 });

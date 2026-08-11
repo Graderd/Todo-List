@@ -1,19 +1,24 @@
 const express = require("express");
 const app = express();
+
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swagger");
 const db = require("./models/db");
 const packageJson = require("./package.json");
-const appVersion =
-  process.env.APP_VERSION || packageJson.version;
 
-app.use(express.json());
-
-// importar ruta
 const tareasRoutes = require("./routes/tareas.routes");
 const authRoutes = require("./routes/auth.routes");
 const errorHandler = require("./middleware/error.middleware");
 const notFoundHandler = require("./middleware/notFound.middleware");
+
+const { register } = require("./metrics/metrics");
+const metricsMiddleware = require("./middleware/metrics.middleware");
+
+const appVersion =
+    process.env.APP_VERSION || packageJson.version;
+
+app.use(express.json());
+app.use(metricsMiddleware);
 
 app.use("/api", tareasRoutes);
 app.use("/auth", authRoutes);
@@ -58,6 +63,17 @@ app.get("/ready", async (req, res) => {
       database: "disconnected"
     });
   }
+});
+
+// Endpoint para métricas de Prometheus
+app.get("/metrics", async (req, res) => {
+    try {
+        res.set("Content-Type", register.contentType);
+        res.send(await register.metrics());
+    } catch (error) {
+        console.error("Metrics endpoint error:", error.message);
+        res.status(500).send("Error retrieving metrics");
+    }
 });
 
 
