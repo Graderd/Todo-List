@@ -14,6 +14,8 @@ const notFoundHandler = require("./middleware/notFound.middleware");
 const { register } = require("./metrics/metrics");
 const metricsMiddleware = require("./middleware/metrics.middleware");
 
+const { logError } = require("./utils/logger");
+
 const appVersion =
     process.env.APP_VERSION || packageJson.version;
 
@@ -55,7 +57,7 @@ app.get("/ready", async (req, res) => {
       database: "connected"
     });
   } catch (error) {
-    console.error("Readiness check failed:", error.message);
+    logError("readiness_check_failed", error);
 
     return res.status(503).json({
       status: "not_ready",
@@ -71,7 +73,7 @@ app.get("/metrics", async (req, res) => {
         res.set("Content-Type", register.contentType);
         res.send(await register.metrics());
     } catch (error) {
-        console.error("Metrics endpoint error:", error.message);
+        logError("metrics_retrieval_failed", error);
         res.status(500).send("Error retrieving metrics");
     }
 });

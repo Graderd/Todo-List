@@ -59,7 +59,6 @@ const getTareaById = (req, res, next) => {
     [tareaId, userId],
     (err, results) => {
       if (err) {
-        console.error(err);
         return next(err);
       }
 
@@ -105,7 +104,6 @@ const createTarea = (req, res, next) => {
     [tituloLimpio, userId],
     (err, result) => {
       if (err) {
-        console.error(err);
         return next(err);
       }
 
@@ -194,7 +192,6 @@ const updateTarea = (req, res, next) => {
 
   db.query(query, valores, (err, result) => {
     if (err) {
-      console.error(err);
       return next(err);
     }
 

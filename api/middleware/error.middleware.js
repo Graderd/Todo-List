@@ -1,15 +1,15 @@
+const { logError } = require("../utils/logger");
+
 const errorHandler = (err, req, res, next) => {
   const status =
     Number.isInteger(err.status) && err.status >= 400
       ? err.status
       : 500;
 
-  console.error({
+  logError("request_failed", err, {
     method: req.method,
     path: req.originalUrl,
-    status,
-    code: err.code,
-    message: err.message
+    status
   });
 
   const publicMessage =
