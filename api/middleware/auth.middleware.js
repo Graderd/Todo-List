@@ -1,5 +1,7 @@
 const jwt = require("jsonwebtoken");
 
+const { logError } = require("../utils/logger");
+
 const verifyToken = (req, res, next) => {
   const authHeader = req.get("authorization");
 
@@ -27,7 +29,15 @@ const verifyToken = (req, res, next) => {
   }
 
   if (!process.env.JWT_SECRET) {
-    console.error("JWT_SECRET no está configurado");
+    logError(
+      "jwt_secret_missing",
+      new Error("JWT_SECRET no está configurado"),
+      {
+        method: req.method,
+        path: req.originalUrl,
+        status: 500
+      }
+    );
 
     return res.status(500).json({
       success: false,
