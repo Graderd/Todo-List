@@ -55,7 +55,14 @@ app.get("/ready", async (req, res) => {
       database: "connected"
     });
   } catch (error) {
-    console.error("Readiness check failed:", error.message);
+    console.error(JSON.stringify({
+      timestamp:new Date().toISOString(), 
+      level: "error", 
+      service: "todo-api", 
+      event: "readiness_check_failed", 
+      code: error.code || null, 
+      message: error.message
+    }));
 
     return res.status(503).json({
       status: "not_ready",
@@ -71,7 +78,14 @@ app.get("/metrics", async (req, res) => {
         res.set("Content-Type", register.contentType);
         res.send(await register.metrics());
     } catch (error) {
-        console.error("Metrics endpoint error:", error.message);
+        console.error(JSON.stringify({
+          timestamp:new Date().toISOString(), 
+          level: "error",
+          service: "todo-api",
+          event: "metrics_retrieval_error", 
+          code: error.code || null,
+          message: error.message
+        }));
         res.status(500).send("Error retrieving metrics");
     }
 });
