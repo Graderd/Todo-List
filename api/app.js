@@ -1,6 +1,8 @@
 const express = require("express");
 const app = express();
 
+app.disable("x-powered-by");
+
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./swagger");
 const db = require("./models/db");
