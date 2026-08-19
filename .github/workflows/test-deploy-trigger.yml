@@ -1,0 +1,45 @@
+name: Probar trigger de deploy
+
+on:
+  push:
+    branches:
+      - feat/automated-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  trigger-deploy:
+    name: Disparar deployment privado
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Solicitar deployment de prueba
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_REPO_TOKEN }}
+        run: |
+          HTTP_STATUS=$(curl \
+            --silent \
+            --show-error \
+            --output /tmp/response.txt \
+            --write-out "%{http_code}" \
+            --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${DEPLOY_TOKEN}" \
+            https://api.github.com/repos/Graderd/todo-list-deploy/actions/workflows/deploy.yml/dispatches \
+            --data '{
+              "ref": "main",
+              "inputs": {
+                "version": "1.1.0"
+              }
+            }')
+
+          echo "GitHub API respondió HTTP ${HTTP_STATUS}"
+
+          if [ "$HTTP_STATUS" != "204" ]; then
+            echo "ERROR: no se pudo disparar el workflow privado."
+            cat /tmp/response.txt
+            exit 1
+          fi
+
+          echo "Workflow privado solicitado correctamente."
