@@ -1,8 +1,10 @@
 services:
   db:
-    image: mysql:8
+    image: mysql@sha256:c36050afdca850f23cef85703f84c7531a5ae155a11b5ee1c60acb09937c4084
     container_name: todo-db
     restart: unless-stopped
+    mem_limit: 1g
+    cpus: "1.0"
 
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -26,9 +28,12 @@ services:
     image: ghcr.io/graderd/todo-list-api:${API_VERSION}
     container_name: todo-api
     restart: unless-stopped
+    mem_limit: 256m
+    cpus: "0.50"
 
-    ports:
-      - "3000:3000"
+    networks:
+      - default
+      - proxy-net
 
     env_file:
       - ./api/.env
@@ -55,3 +60,7 @@ services:
 
 volumes:
   db_data:
+
+networks:
+  proxy-net:
+    external: true
