@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require("cors");
 const app = express();
 
 app.disable("x-powered-by");
@@ -20,6 +21,15 @@ const { logError } = require("./utils/logger");
 
 const appVersion =
     process.env.APP_VERSION || packageJson.version;
+
+app.use(cors({
+  origin: [
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+    "http://127.0.0.1:5500",
+    "http://localhost:5500"
+  ]
+}));
 
 app.use(express.json());
 app.use(metricsMiddleware);
