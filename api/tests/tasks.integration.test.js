@@ -10,17 +10,20 @@ const uniqueId = `${Date.now()}-${process.pid}`;
 const userAEmail = `usuario-a-${uniqueId}@test.com`;
 const userBEmail = `usuario-b-${uniqueId}@test.com`;
 const password = "ClaveSegura123!";
+const nombre = "Usuario Integracion";
 
 async function registerAndLogin(email) {
   const registerResponse = await request(app)
     .post("/auth/register")
     .send({
+      nombre,
       email,
       password
     });
 
   assert.equal(registerResponse.status, 201);
   assert.equal(registerResponse.body.success, true);
+  assert.equal(registerResponse.body.data.nombre, nombre);
 
   const loginResponse = await request(app)
     .post("/auth/login")
@@ -32,6 +35,8 @@ async function registerAndLogin(email) {
   assert.equal(loginResponse.status, 200);
   assert.equal(loginResponse.body.success, true);
   assert.equal(typeof loginResponse.body.token, "string");
+  assert.equal(loginResponse.body.data.nombre, nombre);
+  assert.equal(loginResponse.body.data.email, email);
 
   return {
     id: registerResponse.body.data.id,
