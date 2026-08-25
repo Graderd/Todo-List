@@ -13,14 +13,25 @@ const normalizeEmail = (value) => {
 };
 
 const register = async (req, res, next) => {
+  const nombre =
+    typeof req.body?.nombre === "string" ? req.body.nombre.trim() : "";
+
   const email = normalizeEmail(req.body?.email);
+
   const password =
     typeof req.body?.password === "string" ? req.body.password : "";
 
-  if (!email || !password) {
+  if (!nombre || !email || !password) {
     return res.status(400).json({
       success: false,
-      error: "Email y contraseña son obligatorios"
+      error: "Nombre, email y contraseña son obligatorios"
+    });
+  }
+
+  if (nombre.length < 3 || nombre.length > 100) {
+    return res.status(400).json({
+      success: false,
+      error: "El nombre debe tener entre 3 y 100 caracteres"
     });
   }
 
@@ -42,8 +53,8 @@ const register = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const [result] = await db.promise().query(
-      "INSERT INTO usuarios (email, password) VALUES (?, ?)",
-      [email, hashedPassword]
+      "INSERT INTO usuarios (nombre, email, password) VALUES (?, ?, ?)",
+      [nombre, email, hashedPassword]
     );
 
     return res.status(201).json({
@@ -51,6 +62,7 @@ const register = async (req, res, next) => {
       message: "Usuario creado",
       data: {
         id: result.insertId,
+        nombre,
         email
       }
     });
@@ -81,7 +93,7 @@ const login = async (req, res, next) => {
   try {
     const [results] = await db.promise().query(
       `
-        SELECT id, email, password
+        SELECT id, nombre, email, password
         FROM usuarios
         WHERE email = ?
         LIMIT 1
@@ -126,7 +138,12 @@ const login = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Login exitoso",
-      token
+      token,
+      data: {
+        id: user.id,
+        nombre: user.nombre,
+        email: user.email
+      }
     });
   } catch (error) {
     return next(error);

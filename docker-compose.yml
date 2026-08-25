@@ -40,6 +40,10 @@ services:
       db:
         condition: service_healthy
 
+    networks:
+      - default
+      - proxy-net
+
     healthcheck:
       test:
         [
@@ -55,3 +59,8 @@ services:
 
 volumes:
   db_data:
+
+networks:
+  default:
+  proxy-net:
+    external: true

@@ -7,6 +7,7 @@ const db = require("../models/db");
 
 const email = `integracion-${Date.now()}-${process.pid}@test.com`;
 const password = "ClaveSegura123!";
+const nombre = "Usuario Integracion";
 
 test("GET /ready confirma la conexión con MySQL", async () => {
   const response = await request(app).get("/ready");
@@ -20,10 +21,36 @@ test("GET /ready confirma la conexión con MySQL", async () => {
   });
 });
 
+test("registro sin nombre responde 400", async () => {
+  const response = await request(app)
+    .post("/auth/register")
+    .send({
+      email: `sin-nombre-${Date.now()}@test.com`,
+      password
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+});
+
+test("registro con nombre demasiado corto responde 400", async () => {
+  const response = await request(app)
+    .post("/auth/register")
+    .send({
+      nombre: "AB",
+      email: `nombre-corto-${Date.now()}@test.com`,
+      password
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+});
+
 test("registro y login funcionan con la base de datos temporal", async () => {
   const registerResponse = await request(app)
     .post("/auth/register")
     .send({
+      nombre,
       email,
       password
     });
@@ -31,10 +58,12 @@ test("registro y login funcionan con la base de datos temporal", async () => {
   assert.equal(registerResponse.status, 201);
   assert.equal(registerResponse.body.success, true);
   assert.equal(registerResponse.body.data.email, email);
+  assert.equal(registerResponse.body.data.nombre, nombre);
 
   const duplicateResponse = await request(app)
     .post("/auth/register")
     .send({
+      nombre,
       email,
       password
     });
@@ -53,6 +82,8 @@ test("registro y login funcionan con la base de datos temporal", async () => {
   assert.equal(loginResponse.body.success, true);
   assert.equal(typeof loginResponse.body.token, "string");
   assert.ok(loginResponse.body.token.length > 20);
+  assert.equal(loginResponse.body.data.nombre, nombre);
+  assert.equal(loginResponse.body.data.email, email);
 
   const invalidLoginResponse = await request(app)
     .post("/auth/login")
