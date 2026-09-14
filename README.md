@@ -31,60 +31,60 @@ Esto evita que un usuario pueda consultar, modificar o eliminar tareas perteneci
 
 ## Arquitectura general
 
-```text
-Usuario
-   │
-   ▼
-Frontend Grade List
-   │
-   ▼
-Nginx Proxy Manager
-   │
-   ▼
-Grade List API
-Node.js + Express
-   │
-   ▼
-MySQL
-   │
-   ├── Backup local
-   │
-   └── Segunda copia en TrueNAS
-   │
-   ▼
-Prometheus
-   │
-   ├── node-exporter
-   ├── cAdvisor
-   └── Grafana
+```mermaid
+flowchart TB
+
+    USER[Usuario / Navegador]
+
+    subgraph APP["Aplicación"]
+        NPM[Nginx Proxy Manager]
+        FE[Grade List Frontend<br/>HTML + CSS + JavaScript]
+        API[Grade List API<br/>Node.js + Express]
+        DB[(MySQL)]
+    end
+
+    USER -->|grade.home| NPM
+    NPM --> FE
+    FE -->|api.home| NPM
+    NPM --> API
+    API --> DB
+
+    subgraph BACKUP["Backups"]
+        LOCAL[Backup local<br/>7 días]
+        NAS[TrueNAS<br/>30 días]
+    end
+
+    DB --> LOCAL
+    LOCAL -->|Copia + SHA-256| NAS
+
+    subgraph OBS["Observabilidad"]
+        PROM[Prometheus]
+        GRAF[Grafana]
+        NODE[node-exporter]
+        CAD[cAdvisor]
+    end
+
+    PROM -->|/metrics| API
+    PROM --> NODE
+    PROM --> CAD
+    GRAF --> PROM
+
+    subgraph CICD["CI/CD"]
+        GH[GitHub]
+        ACTIONS[GitHub Actions]
+        GHCR[GitHub Container Registry]
+        DEPLOY[todo-list-deploy]
+        RUNNER[Self-hosted Runner]
+    end
+
+    GH --> ACTIONS
+    ACTIONS --> GHCR
+    ACTIONS --> DEPLOY
+    DEPLOY --> RUNNER
+    RUNNER -->|Deploy| API
 ```
 
-El despliegue utiliza además GitHub Actions y GitHub Container Registry:
-
-```text
-Git
- │
- ▼
-GitHub
- │
- ├── CI
- │
- ├── Build Docker
- │
- └── GHCR
-       │
-       ▼
-todo-list-deploy
-       │
-       ▼
-Self-hosted Runner
-       │
-       ▼
-Servidor Homelab
-       │
-       ▼
-Grade List API
-```
+La arquitectura separa la aplicación, los backups, la observabilidad y el flujo CI/CD utilizado para desplegar Grade List.
 
 ---
 
