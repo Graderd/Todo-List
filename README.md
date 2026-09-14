@@ -1,14 +1,14 @@
-# Todo List API
+# Grade List API
 
-API REST para la gestión de tareas por usuario, desarrollada con Node.js, Express y MySQL.
+Backend REST de **Grade List** para la gestión de tareas por usuario, desarrollado con Node.js, Express y MySQL.
 
-El proyecto incluye autenticación JWT, validación de datos, aislamiento de tareas entre usuarios, documentación Swagger, pruebas automatizadas, Docker, CI con GitHub Actions y despliegue mediante imágenes versionadas publicadas en GitHub Container Registry.
+El proyecto incluye autenticación JWT, aislamiento de recursos entre usuarios, validación de datos, documentación Swagger, pruebas automatizadas, seguridad a nivel de aplicación y contenedor, Docker, CI/CD con GitHub Actions, publicación de imágenes en GitHub Container Registry, despliegue automático con rollback, backups y observabilidad.
 
 ---
 
 ## Descripción
 
-Todo List API permite que cada usuario pueda registrarse, iniciar sesión y administrar sus propias tareas.
+Grade List permite que cada usuario pueda registrarse, iniciar sesión y administrar sus propias tareas mediante una API protegida con autenticación JWT.
 
 Cada usuario puede:
 
@@ -19,13 +19,72 @@ Cada usuario puede:
 - Obtener una tarea por ID.
 - Actualizar el título de una tarea.
 - Cambiar el estado completada/pendiente.
-- Actualizar varios campos de una tarea.
+- Actualizar campos de una tarea.
 - Eliminar tareas.
 - Filtrar tareas completadas o pendientes.
 
 Las operaciones sobre tareas están asociadas al usuario autenticado mediante JWT.
 
-Esto evita que un usuario pueda consultar, modificar o eliminar las tareas pertenecientes a otro usuario.
+Esto evita que un usuario pueda consultar, modificar o eliminar tareas pertenecientes a otro usuario.
+
+---
+
+## Arquitectura general
+
+```text
+Usuario
+   │
+   ▼
+Frontend Grade List
+   │
+   ▼
+Nginx Proxy Manager
+   │
+   ▼
+Grade List API
+Node.js + Express
+   │
+   ▼
+MySQL
+   │
+   ├── Backup local
+   │
+   └── Segunda copia en TrueNAS
+   │
+   ▼
+Prometheus
+   │
+   ├── node-exporter
+   ├── cAdvisor
+   └── Grafana
+```
+
+El despliegue utiliza además GitHub Actions y GitHub Container Registry:
+
+```text
+Git
+ │
+ ▼
+GitHub
+ │
+ ├── CI
+ │
+ ├── Build Docker
+ │
+ └── GHCR
+       │
+       ▼
+todo-list-deploy
+       │
+       ▼
+Self-hosted Runner
+       │
+       ▼
+Servidor Homelab
+       │
+       ▼
+Grade List API
+```
 
 ---
 
@@ -39,6 +98,9 @@ Esto evita que un usuario pueda consultar, modificar o eliminar las tareas perte
 - JWT
 - bcrypt
 - dotenv
+- CORS
+- Helmet
+- express-rate-limit
 
 ### Documentación
 
@@ -58,6 +120,20 @@ Esto evita que un usuario pueda consultar, modificar o eliminar las tareas perte
 - GitHub
 - GitHub Actions
 - GitHub Container Registry (GHCR)
+- Self-hosted GitHub Actions Runner
+
+### Observabilidad
+
+- Prometheus
+- Grafana
+- node-exporter
+- cAdvisor
+
+### Infraestructura
+
+- Linux
+- Nginx Proxy Manager
+- TrueNAS
 
 ---
 
@@ -85,9 +161,9 @@ El cliente no puede seleccionar manualmente el `user_id` propietario de una tare
 
 ## Seguridad
 
-El proyecto incluye diferentes medidas de seguridad y validación.
+El proyecto aplica medidas de seguridad tanto a nivel de aplicación como de contenedor.
 
-Entre ellas:
+### Seguridad de aplicación
 
 - Contraseñas almacenadas utilizando bcrypt.
 - Tokens JWT con tiempo de expiración.
@@ -100,13 +176,32 @@ Entre ellas:
 - Validación del filtro `completada`.
 - Aislamiento de recursos entre usuarios.
 - Respuestas genéricas para errores internos.
-- Las credenciales reales no forman parte del repositorio.
-- `.env` está excluido mediante `.gitignore`.
+- CORS configurable mediante variables de entorno.
+- Headers HTTP de seguridad mediante Helmet.
+- Rate limiting aplicado a las rutas de autenticación.
+- Cabecera `X-Powered-By` deshabilitada.
+- Credenciales excluidas del repositorio.
+- Archivos `.env` excluidos mediante `.gitignore`.
 - Auditoría de dependencias mediante `npm audit`.
 
 Cuando un usuario intenta acceder a una tarea que no le pertenece, la API responde como recurso no encontrado.
 
-Esto ayuda a evitar que un usuario pueda determinar si existe un recurso perteneciente a otra cuenta.
+Esto evita revelar la existencia de recursos pertenecientes a otras cuentas.
+
+### Hardening del contenedor
+
+El contenedor de producción utiliza:
+
+- Usuario no root (`node`).
+- Filesystem configurado como solo lectura.
+- `no-new-privileges`.
+- Eliminación de capabilities mediante `cap_drop: ALL`.
+- `/tmp` montado mediante `tmpfs`.
+- Límites de CPU y memoria.
+- Healthcheck de Docker.
+- Imagen base de Node fijada por digest.
+
+La base de datos MySQL utilizada en producción también se ejecuta mediante una imagen fijada por digest.
 
 ---
 
@@ -153,7 +248,11 @@ true
 false
 ```
 
-Un valor diferente devuelve una respuesta `400 Bad Request`.
+Un valor diferente devuelve:
+
+```text
+400 Bad Request
+```
 
 ---
 
@@ -173,7 +272,7 @@ Ejemplo:
 {
   "status": "ok",
   "service": "todo-api",
-  "version": "1.0.1"
+  "version": "1.1.3"
 }
 ```
 
@@ -198,6 +297,18 @@ Ejemplo:
 ```
 
 Este endpoint confirma que la API puede comunicarse correctamente con MySQL.
+
+---
+
+## Métricas
+
+La API expone métricas para Prometheus mediante:
+
+```text
+GET /metrics
+```
+
+Prometheus recopila estas métricas periódicamente para permitir el monitoreo de la aplicación.
 
 ---
 
@@ -245,7 +356,7 @@ Swagger permite consultar los endpoints disponibles y realizar pruebas utilizand
 
 ## Pruebas automatizadas
 
-El proyecto cuenta con más de 30 pruebas automatizadas.
+El proyecto cuenta actualmente con **38 pruebas automatizadas**.
 
 Las pruebas cubren, entre otros casos:
 
@@ -280,11 +391,13 @@ cd api
 npm test
 ```
 
+Las pruebas de integración utilizan MySQL.
+
 ---
 
 ## CI con GitHub Actions
 
-El proyecto utiliza GitHub Actions para ejecutar automáticamente controles de calidad.
+El proyecto utiliza GitHub Actions para validar automáticamente los cambios antes de integrarlos.
 
 El pipeline de CI incluye:
 
@@ -293,11 +406,15 @@ Checkout
    ↓
 Node.js 22
    ↓
+Servicio temporal MySQL 8
+   ↓
 npm ci
    ↓
-Validación de sintaxis
+Validación de sintaxis JavaScript
    ↓
-Pruebas automatizadas
+Carga del esquema de base de datos
+   ↓
+38 pruebas automatizadas
    ↓
 npm audit
    ↓
@@ -306,15 +423,15 @@ Validación de Docker Compose
 Construcción de imagen Docker
 ```
 
-Las pruebas de integración utilizan una instancia temporal de MySQL.
+Las pruebas de integración utilizan una instancia temporal de MySQL dentro del workflow.
 
-El CI permite detectar errores antes de que los cambios sean integrados a la rama principal.
+Esto permite comprobar la aplicación, la base de datos y la construcción de la imagen antes de integrar cambios a la rama principal.
 
 ---
 
 ## Docker
 
-El proyecto dispone de dos configuraciones principales.
+El proyecto dispone de configuraciones separadas para desarrollo y producción.
 
 ### Desarrollo
 
@@ -322,7 +439,7 @@ El proyecto dispone de dos configuraciones principales.
 docker-compose.yml
 ```
 
-Esta configuración permite trabajar con el proyecto utilizando el código fuente local.
+Esta configuración permite trabajar utilizando el código fuente local.
 
 ### Producción
 
@@ -330,13 +447,15 @@ Esta configuración permite trabajar con el proyecto utilizando el código fuent
 docker-compose.prod.yml
 ```
 
-La configuración de producción utiliza una imagen Docker versionada almacenada en GitHub Container Registry.
+La configuración de producción utiliza una imagen previamente construida y almacenada en GitHub Container Registry.
 
 Ejemplo:
 
 ```text
-ghcr.io/graderd/todo-list-api:1.0.1
+ghcr.io/graderd/todo-list-api:1.1.3
 ```
+
+Producción no necesita reconstruir el código fuente directamente en el servidor.
 
 ---
 
@@ -354,8 +473,8 @@ Ejemplos:
 
 ```text
 1.0.0
-1.0.1
 1.1.0
+1.1.3
 2.0.0
 ```
 
@@ -368,8 +487,8 @@ vX.Y.Z
 Ejemplo:
 
 ```bash
-git tag -a v1.0.1 -m "Release v1.0.1"
-git push origin v1.0.1
+git tag -a v1.1.3 -m "Backend v1.1.3"
+git push origin v1.1.3
 ```
 
 El workflow:
@@ -378,7 +497,7 @@ El workflow:
 .github/workflows/publish-image.yml
 ```
 
-construye y publica automáticamente la imagen en GHCR.
+construye la imagen mediante Docker Buildx y la publica automáticamente en GHCR.
 
 ---
 
@@ -390,12 +509,6 @@ El proyecto utiliza Semantic Versioning:
 MAJOR.MINOR.PATCH
 ```
 
-Ejemplo:
-
-```text
-1.0.1
-```
-
 Donde:
 
 ```text
@@ -404,7 +517,7 @@ MINOR → nuevas funcionalidades compatibles
 PATCH → correcciones y mejoras compatibles
 ```
 
-La versión desplegada puede consultarse mediante:
+La versión realmente ejecutada puede consultarse mediante:
 
 ```text
 GET /health
@@ -412,92 +525,237 @@ GET /health
 
 ---
 
-## Despliegue
+## CD y despliegue automático
 
-La versión utilizada en producción se controla mediante:
+El despliegue de producción está automatizado mediante GitHub Actions y un runner self-hosted dentro del homelab.
 
-```env
-API_VERSION=1.0.1
+El flujo comienza al publicar un tag Git con formato `vX.Y.Z`:
+
+```text
+Tag vX.Y.Z
+   ↓
+GitHub Actions
+   ↓
+Construcción de imagen Docker
+   ↓
+Publicación en GHCR
+   ↓
+Dispatch al repositorio todo-list-deploy
+   ↓
+Runner self-hosted de producción
+   ↓
+Script deploy-todo-api
+   ↓
+Pull de la nueva imagen
+   ↓
+Actualización de API_VERSION
+   ↓
+Recreación del contenedor API
+   ↓
+Health / Readiness
+   ↓
+Producción
 ```
 
-El archivo:
+La imagen desplegada utiliza:
+
+```text
+ghcr.io/graderd/todo-list-api:<version>
+```
+
+La versión de producción se controla mediante:
+
+```env
+API_VERSION=1.1.3
+```
+
+El archivo utilizado para producción es:
 
 ```text
 docker-compose.prod.yml
 ```
 
-utiliza esa variable para seleccionar la imagen:
+El repositorio de aplicación construye y publica la imagen.
+
+El despliegue de producción se gestiona mediante un repositorio separado:
 
 ```text
-ghcr.io/graderd/todo-list-api:${API_VERSION}
+Graderd/todo-list-deploy
 ```
 
-De esta manera, el servidor puede ejecutar una versión específica de la API sin reconstruir el código directamente en producción.
+El runner de producción ejecuta:
 
-Ejemplo de despliegue:
-
-```bash
-docker compose -f docker-compose.prod.yml pull api
-docker compose -f docker-compose.prod.yml up -d api
+```text
+/usr/local/sbin/deploy-todo-api
 ```
+
+El script solamente recrea el servicio de la API.
+
+MySQL permanece separado del ciclo de despliegue de la aplicación.
+
+Después del despliegue se comprueba que:
+
+- El contenedor esté funcionando.
+- El healthcheck de Docker sea correcto.
+- `/ready` responda satisfactoriamente.
+- La API pueda comunicarse con MySQL.
 
 ---
 
-## Rollback
+## Rollback automático
 
-Si una nueva versión presenta problemas, el proyecto permite regresar rápidamente a una versión estable anterior.
+El despliegue incorpora rollback automático.
 
-Ejemplo:
+Antes de instalar una nueva versión, el script conserva la versión estable anterior.
+
+Si ocurre alguno de estos problemas:
+
+- Fallo al recrear el contenedor.
+- El contenedor no alcanza estado saludable.
+- `/ready` no responde correctamente.
+- La aplicación no supera las validaciones posteriores al despliegue.
+
+el proceso restaura automáticamente la versión anterior.
 
 ```text
-1.0.1
- ↓
-1.0.0
+Versión estable
+   ↓
+Intento de nueva versión
+   ↓
+Validaciones
+   ↓
+¿Todo correcto?
+   ├── Sí → Nueva versión en producción
+   │
+   └── No → Restaurar versión anterior
 ```
 
-Se cambia:
+Durante el rollback solamente se reemplaza el contenedor de la API.
 
-```env
-API_VERSION=1.0.0
+MySQL y sus datos permanecen funcionando de forma independiente.
+
+El mecanismo de rollback fue validado mediante despliegues controlados.
+
+---
+
+## Observabilidad
+
+El entorno utiliza un stack de observabilidad compuesto por:
+
+- Prometheus.
+- Grafana.
+- node-exporter.
+- cAdvisor.
+
+Prometheus recopila actualmente métricas de:
+
+```text
+prometheus:9090
+node-exporter:9100
+cadvisor:8080
+todo-api:3000/metrics
 ```
 
-y se recrea únicamente el contenedor de la API:
+### node-exporter
 
-```bash
-docker compose -f docker-compose.prod.yml up -d api
+Permite recopilar métricas del servidor Linux, como:
+
+- CPU.
+- Memoria.
+- Disco.
+- Sistema operativo.
+
+### cAdvisor
+
+Permite observar métricas de los contenedores Docker.
+
+### Grafana
+
+Grafana permite visualizar las métricas recopiladas por Prometheus mediante dashboards.
+
+El stack de observabilidad se administra desde:
+
+```text
+/srv/docker/stacks/observability/docker-compose.yml
 ```
 
-El contenedor de MySQL permanece funcionando durante el rollback.
+Los datos de Prometheus y Grafana utilizan volúmenes Docker persistentes.
 
-Esto permite reemplazar la versión de la aplicación sin recrear la base de datos.
+Prometheus mantiene una retención de métricas de 30 días.
+
+---
+
+## Backups
+
+La base de datos MySQL dispone de backups automáticos.
+
+El proceso se ejecuta diariamente mediante `systemd`.
+
+Horario:
+
+```text
+21:00
+```
+
+El backup crea primero una copia local en:
+
+```text
+/srv/backups/todo-list/mysql
+```
+
+Los backups locales tienen una retención de 7 días.
+
+Después, el archivo se copia hacia TrueNAS:
+
+```text
+/mnt/truenas-todolist/mysql
+```
+
+La copia remota se valida comparando SHA-256 entre el archivo local y el archivo almacenado en TrueNAS.
+
+```text
+MySQL
+   ↓
+Backup local
+   ↓
+SHA-256
+   ↓
+TrueNAS
+   ↓
+Verificación SHA-256
+```
+
+Los backups almacenados en TrueNAS tienen una retención de 30 días.
+
+Si la copia remota no coincide con el backup local, el archivo incompleto o inválido es eliminado.
 
 ---
 
 ## Operación y despliegue
 
-La guía detallada para:
-
-- Publicar versiones.
-- Descargar imágenes desde GHCR.
-- Desplegar la API.
-- Verificar `/health`.
-- Verificar `/ready`.
-- Confirmar la versión ejecutada.
-- Realizar rollback.
-
-se encuentra en:
+La guía detallada para tareas operativas se encuentra en:
 
 - [Deployment Runbook](docs/deployment-runbook.md)
+
+Incluye procedimientos relacionados con:
+
+- Publicación de versiones.
+- Imágenes de GHCR.
+- Despliegue.
+- Health checks.
+- Readiness.
+- Verificación de versiones.
+- Recuperación y rollback.
 
 ---
 
 ## Variables de entorno
 
-El proyecto utiliza variables de entorno para almacenar configuraciones y credenciales.
+El proyecto utiliza variables de entorno para configuración y credenciales.
 
-Los archivos `.env.example` sirven como referencia para conocer las variables necesarias.
+Los archivos `.env.example` sirven como referencia.
 
-Las credenciales reales deben mantenerse únicamente en archivos `.env` locales y nunca deben subirse al repositorio.
+Las credenciales reales nunca deben almacenarse en el repositorio.
 
 Ejemplo:
 
@@ -507,7 +765,13 @@ DB_USER=
 DB_PASSWORD=
 DB_NAME=
 JWT_SECRET=
-API_VERSION=1.0.1
+CORS_ORIGINS=http://grade.home
+```
+
+La versión de producción se controla desde el entorno de Docker Compose:
+
+```env
+API_VERSION=1.1.3
 ```
 
 ---
@@ -550,7 +814,7 @@ Todo-List/
 
 ## Flujo de desarrollo
 
-Los cambios del proyecto siguen este flujo:
+Los cambios siguen un flujo basado en ramas.
 
 ```text
 Crear rama
@@ -565,12 +829,14 @@ Push
    ↓
 Pull Request
    ↓
-GitHub Actions
+GitHub Actions CI
+   ↓
+Validación
    ↓
 Merge a main
 ```
 
-Para publicar una nueva versión:
+Una nueva versión sigue este flujo:
 
 ```text
 Merge a main
@@ -581,17 +847,31 @@ Push del tag
    ↓
 GitHub Actions
    ↓
-Construcción de imagen Docker
+Build Docker
    ↓
 Publicación en GHCR
    ↓
-Actualizar API_VERSION
+Dispatch automático
+   ↓
+Self-hosted Runner
    ↓
 Deploy
    ↓
-Verificar /health y /ready
+Health + Readiness
    ↓
-Rollback si es necesario
+Producción
+```
+
+Si el despliegue falla:
+
+```text
+Deploy
+   ↓
+Fallo de validación
+   ↓
+Rollback automático
+   ↓
+Versión estable anterior
 ```
 
 ---
@@ -603,28 +883,84 @@ El proyecto cuenta actualmente con:
 - API REST funcional.
 - Registro e inicio de sesión.
 - Autenticación JWT.
-- CRUD de tareas.
+- CRUD completo de tareas.
 - Aislamiento de tareas entre usuarios.
 - Validaciones de entrada.
-- Filtro de tareas por estado.
+- Filtros de tareas por estado.
 - Swagger.
 - MySQL.
 - Docker.
 - Docker Compose.
-- Pruebas automatizadas.
+- 38 pruebas automatizadas.
 - Pruebas de integración con MySQL.
 - CI con GitHub Actions.
 - Auditoría de dependencias.
+- Helmet.
+- CORS configurable.
+- Rate limiting.
+- Hardening del contenedor.
 - Health check.
 - Readiness check.
+- Endpoint de métricas.
 - Manejo consistente de errores.
 - Imágenes Docker versionadas.
+- Imágenes fijadas mediante digest donde corresponde.
 - Publicación automática en GHCR.
-- Despliegue mediante imágenes versionadas.
-- Procedimiento de rollback probado.
+- CD mediante GitHub Actions.
+- Runner self-hosted de producción.
+- Despliegue automático.
+- Rollback automático probado.
+- Backups locales automáticos.
+- Segunda copia de backups en TrueNAS.
+- Verificación SHA-256 de backups.
+- Prometheus.
+- Grafana.
+- node-exporter.
+- cAdvisor.
+- Monitoreo de la API en producción.
+- Revisión funcional completa realizada.
+
+---
+
+## Estado de producción
+
+Versión validada:
+
+```text
+1.1.3
+```
+
+La API se ejecuta con:
+
+```text
+User=node
+Privileged=false
+ReadonlyRootfs=true
+no-new-privileges=true
+cap_drop=ALL
+/tmp=tmpfs
+```
+
+El endpoint `/ready` confirma conectividad con MySQL.
+
+La aplicación Grade List fue validada funcionalmente de extremo a extremo incluyendo:
+
+```text
+Registro
+   ↓
+Login
+   ↓
+Crear tarea
+   ↓
+Editar tarea
+   ↓
+Completar tarea
+   ↓
+Eliminar tarea
+```
 
 ---
 
 ## Autor
 
-Desarrollado como proyecto práctico de Backend y DevOps.
+Desarrollado como proyecto práctico de **Backend, Docker, CI/CD, seguridad, backups y observabilidad**, dentro de una ruta de aprendizaje DevOps.
