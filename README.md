@@ -35,17 +35,20 @@ Esto evita que un usuario pueda consultar, modificar o eliminar tareas perteneci
 flowchart TB
 
     USER[Usuario / Navegador]
+    CF[Cloudflare<br/>DNS + HTTPS + Tunnel + WAF]
 
-    subgraph APP["Aplicación"]
+    subgraph APP["Aplicación / Homelab"]
         NPM[Nginx Proxy Manager]
         FE[Grade List Frontend<br/>HTML + CSS + JavaScript]
         API[Grade List API<br/>Node.js + Express]
         DB[(MySQL)]
     end
 
-    USER -->|grade.home| NPM
+    USER --> CF
+    CF -->|grade.stflab.dev| NPM
     NPM --> FE
-    FE -->|api.home| NPM
+    FE -->|https://api.stflab.dev| CF
+    CF -->|api.stflab.dev| NPM
     NPM --> API
     API --> DB
 
@@ -64,7 +67,7 @@ flowchart TB
         CAD[cAdvisor]
     end
 
-    PROM -->|/metrics| API
+    PROM -->|todo-api:3000/metrics| API
     PROM --> NODE
     PROM --> CAD
     GRAF --> PROM
@@ -84,7 +87,7 @@ flowchart TB
     RUNNER -->|Deploy| API
 ```
 
-La arquitectura separa la aplicación, los backups, la observabilidad y el flujo CI/CD utilizado para desplegar Grade List.
+La arquitectura separa el acceso público mediante Cloudflare, la aplicación desplegada en el homelab, los backups, la observabilidad y el flujo CI/CD.
 
 ---
 
@@ -312,6 +315,60 @@ Prometheus recopila estas métricas periódicamente para permitir el monitoreo d
 
 ---
 
+## Acceso público y seguridad perimetral
+
+La API dispone de acceso público mediante HTTPS:
+
+```text
+https://api.stflab.dev
+```
+
+La aplicación web está disponible en:
+
+```text
+https://grade.stflab.dev
+```
+
+El acceso desde Internet se realiza mediante **Cloudflare Tunnel**.
+
+CORS permite tanto el frontend interno como el frontend público:
+
+```env
+CORS_ORIGINS=http://grade.home,https://grade.stflab.dev
+```
+
+### Exposición de endpoints
+
+| Endpoint | Acceso desde Internet | Uso |
+| --- | --- | --- |
+| `/health` | Público | Comprobar que la API está activa |
+| `/auth/*` | Público | Registro e inicio de sesión |
+| `/api/*` | Público con JWT | Gestión de tareas |
+| `/docs/` | Público | Documentación Swagger |
+| `/ready` | Bloqueado externamente | Readiness interno y despliegue |
+| `/metrics` | Bloqueado externamente | Scraping interno de Prometheus |
+
+Cloudflare bloquea externamente:
+
+```text
+/ready
+/metrics
+```
+
+Internamente estos endpoints continúan disponibles.
+
+Prometheus obtiene las métricas directamente mediante:
+
+```text
+todo-api:3000/metrics
+```
+
+El proceso de despliegue utiliza `/ready` mediante la ruta interna del homelab.
+
+Esto permite mantener las funciones operativas disponibles para la infraestructura sin exponerlas innecesariamente a Internet.
+
+---
+
 ## Manejo de errores
 
 Las rutas inexistentes responden en formato JSON.
@@ -348,6 +405,12 @@ Con la aplicación ejecutándose:
 
 ```text
 http://localhost:3000/docs
+```
+
+La documentación pública está disponible en:
+
+```text
+https://api.stflab.dev/docs/
 ```
 
 Swagger permite consultar los endpoints disponibles y realizar pruebas utilizando autenticación Bearer JWT.
@@ -765,7 +828,7 @@ DB_USER=
 DB_PASSWORD=
 DB_NAME=
 JWT_SECRET=
-CORS_ORIGINS=http://grade.home
+CORS_ORIGINS=http://grade.home,https://grade.stflab.dev
 ```
 
 La versión de producción se controla desde el entorno de Docker Compose:
